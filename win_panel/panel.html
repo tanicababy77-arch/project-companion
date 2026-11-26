@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>项目伴侣</title>
+<style>
+:root{
+  --bg:#eee7d8;
+  --surface:#fffdf7;
+  --surface-2:#f8f3e7;
+  --ink:#221d17;
+  --muted:#6b6153;
+  --line:#d8cdb9;
+  --accent:#a3401f;
+  --ok:#2f6b45;
+  --warn:#9a6b12;
+  --bad:#8a3330;
+  --sh1:0 2px 6px rgba(74,52,28,.10);
+  --sh2:0 10px 22px rgba(74,52,28,.14);
+  --sh3:0 24px 48px rgba(74,52,28,.20);
+  --font:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --hand:"Kaiti SC","STKaiti","KaiTi","Songti SC",serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:radial-gradient(1200px 520px at 50% -8%,#f8f3e7 0%,transparent 62%),var(--bg);
+  color:var(--ink);font:16px/1.6 var(--font);
+  min-height:100vh;
+}
+.grain{position:fixed;inset:0;pointer-events:none;opacity:.05;z-index:0;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>")}
+header{
+  position:sticky;top:0;z-index:30;
+  display:flex;align-items:center;gap:16px;
+  padding:20px 32px;min-height:88px;
+  background:rgba(238,231,216,.88);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.mark{font-size:26px;line-height:1;filter:saturate(.8)}
+h1{font-family:var(--hand);font-size:32px;font-weight:600;letter-spacing:.5px;line-height:1.15}
+#subline{font-size:13px;color:var(--muted);margin-top:4px}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.date{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.ghost{
+  background:transparent;border:1px solid var(--line);color:var(--ink);
+  height:44px;padding:0 16px;border-radius:999px;cursor:pointer;font-size:14px;
+  transition:background .2s,border-color .2s;
+}
+.ghost:hover{background:#fff;border-color:#c5b79e}
+.ghost.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+main{max-width:1240px;margin:0 auto;padding:48px 24px 96px;position:relative;z-index:1}
+.board{display:flex;flex-direction:column;gap:8px}
+#board[hidden]{display:none}
+.views{display:flex;align-items:center;gap:8px;padding:0 26px;margin-top:4px}
+.tab{border:1px solid var(--line);background:transparent;color:var(--muted);
+  padding:5px 14px;border-radius:999px;font-size:13px;cursor:pointer;font-family:var(--font)}
+.tab.on{background:var(--surface);color:var(--ink);border-color:#cbb894;box-shadow:var(--sh1)}
+.views-hint{margin-left:auto;font-size:12px;color:var(--muted)}
+.changes{padding:6px 26px 70px;max-width:1220px;margin:0 auto}
+.chg-bar{display:flex;gap:8px;padding:12px 0 4px}
+.chg-row .btn{height:26px;padding:0 10px;font-size:11.5px;border-radius:4px}
+.chg-empty{padding:60px 0;text-align:center;color:var(--muted)}
+.chg-proj{background:var(--surface);border-radius:5px;box-shadow:var(--sh1);padding:14px 18px;margin-top:14px}
+.chg-head{display:flex;align-items:center;gap:10px;padding-bottom:6px}
+.chg-head h3{font-family:var(--hand);font-size:19px;font-weight:600}
+.chg-head .stat{font-size:12px;color:var(--muted)}
+.chg-head .more{margin-left:auto}
+.chg-row{display:grid;grid-template-columns:52px minmax(0,1fr) auto auto;gap:10px;
+  align-items:center;padding:7px 0;border-top:1px dashed var(--line);font-size:12.5px}
+.chg-row .t{color:var(--muted);font-variant-numeric:tabular-nums}
+.chg-row .p{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);color:var(--ink);cursor:pointer}
+.chg-row .p:hover{text-decoration:underline}
+.chg-row .tags{display:flex;gap:6px;align-items:center}
+.knew{color:var(--ok)}
+.kmod{color:var(--warn)}
+.ver{font-size:11px;color:var(--bad);border:1px solid #d9b7a8;background:#fbf1ea;
+  padding:1px 6px;border-radius:3px;white-space:nowrap}
+.ver.zero{display:none}
+.rope-row{position:relative;display:flex;justify-content:center;align-items:flex-start;
+  gap:32px;padding:46px 8px 48px;flex-wrap:nowrap}
+.rope-row+.rope-row{padding-top:24px}
+.rope-svg{position:absolute;left:0;right:0;top:10px;width:100%;height:52px;pointer-events:none}
+.polaroid{
+  position:relative;width:232px;flex:0 0 232px;
+  background:var(--surface);padding:14px 14px 0;border-radius:3px;
+  box-shadow:var(--sh2);cursor:pointer;
+  transform:rotate(var(--tilt)) translateY(0);
+  transition:transform .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s;
+}
+.polaroid:hover,.polaroid:focus-visible{transform:rotate(0deg) translateY(-6px);box-shadow:var(--sh3);outline:none}
+.polaroid:focus-visible{box-shadow:var(--sh3),0 0 0 3px #a3401f33}
+.peg{position:absolute;top:-16px;left:50%;transform:translateX(-50%);width:16px;height:28px;z-index:4}
+.peg::before,.peg::after{content:"";position:absolute;top:0;width:6px;height:28px;border-radius:3px}
+.peg::before{left:0;background:linear-gradient(90deg,#d3b183,#b99564)}
+.peg::after{right:0;background:linear-gradient(90deg,#b99564,#a5824f)}
+.tape{position:absolute;top:-9px;left:20px;width:62px;height:18px;background:rgba(223,203,148,.72);
+  transform:rotate(-3deg);box-shadow:0 1px 2px rgba(0,0,0,.08);border-radius:1px;z-index:3}
+.photo{position:relative;aspect-ratio:1/1;background:#e7ddc9;overflow:hidden;border-radius:2px}
+.photo img{width:100%;height:100%;object-fit:cover;filter:saturate(.9) contrast(.97);display:block}
+.art{width:100%;height:100%;display:grid;place-items:center;
+  font-family:var(--hand);font-size:56px;color:#4a3d2d;letter-spacing:6px;
+  background:
+    radial-gradient(circle at 30% 25%,hsl(var(--h) 38% 88%),transparent 55%),
+    linear-gradient(150deg,hsl(var(--h) 30% 84%),hsl(var(--h) 22% 72%));
+}
+.art small{font-family:var(--font);font-size:11px;letter-spacing:1px;color:#5c4e3c;margin-top:6px}
+.caption{padding:12px 2px 16px}
+.caption h3{font-family:var(--hand);font-size:20px;font-weight:600;letter-spacing:.4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12px;color:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;flex:0 0 7px;background:var(--bad)}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}
+.mini{display:flex;align-items:flex-end;gap:2px;margin-left:auto;height:16px}
+.mini i{display:block;width:3px;background:#cbbfa9;border-radius:1px;min-height:2px}
+.mini i.today{background:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.chip{font-size:11px;line-height:1.5;padding:2px 8px;border:1px solid var(--line);
+  border-radius:999px;color:var(--muted);background:#fff}
+.chip.hot{color:var(--accent);border-color:#e4c3b2;background:#fdf2ec}
+.stamp{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-9deg);
+  color:var(--accent);border:2px solid currentColor;padding:2px 8px;
+  font-size:11px;letter-spacing:2px;border-radius:3px;white-space:nowrap;
+  background:rgba(255,253,247,.82);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.skeleton{width:232px;flex:0 0 232px;height:300px;border-radius:3px;background:#fffdf7;
+  box-shadow:var(--sh1);position:relative;overflow:hidden}
+.skeleton::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(100deg,transparent 20%,#efe7d6 45%,transparent 70%);
+  animation:sh 1.4s infinite}
+@keyframes sh{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.empty{padding:96px 24px;text-align:center;color:var(--muted)}
+.empty h2{font-family:var(--hand);font-size:28px;color:var(--ink);margin-bottom:12px}
+.empty code{font-family:var(--mono);font-size:13px;background:#fff;border:1px solid var(--line);
+  padding:2px 8px;border-radius:4px}
+footer{border-top:1px solid var(--line);padding:24px 32px;display:flex;gap:24px;
+  justify-content:center;flex-wrap:wrap;font-size:12px;color:var(--muted);
+  background:rgba(238,231,216,.6)}
+/* ---------- 抽屉 ---------- */
+.overlay{position:fixed;inset:0;background:rgba(40,30,18,.30);opacity:0;
+  transition:opacity .28s;z-index:38}
+.overlay.show{opacity:1}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(600px,100vw);z-index:40;
+  background:var(--surface);box-shadow:-24px 0 64px rgba(60,40,20,.22);
+  display:flex;flex-direction:column;transform:translateX(102%);
+  transition:transform .32s cubic-bezier(.2,.8,.2,1)}
+.drawer.show{transform:none}
+.drawer-head{padding:24px 24px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.dh-top{display:flex;align-items:flex-start;gap:12px}
+.dh-top h2{font-family:var(--hand);font-size:28px;font-weight:600;line-height:1.2;word-break:break-all}
+.dh-top .close{margin-left:auto;background:none;border:none;font-size:22px;cursor:pointer;
+  color:var(--muted);width:44px;height:44px;border-radius:999px}
+.dh-top .close:hover{background:#00000008;color:var(--ink)}
+.dh-path{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px;word-break:break-all}
+.dh-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.dh-actions button{height:38px;padding:0 14px;border-radius:999px;border:1px solid var(--line);
+  background:#fff;font-size:13px;cursor:pointer}
+.dh-actions button:hover{border-color:#c5b79e}
+.drawer-body{padding:24px;overflow:auto;flex:1}
+.loading{color:var(--muted);text-align:center;padding:48px 0}
+h4.sec{font-size:20px;font-weight:600;margin:8px 0 16px;display:flex;align-items:center;gap:8px}
+h4.sec small{font-size:12px;font-weight:400;color:var(--muted)}
+.today-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.tcell{border:1px solid var(--line);border-radius:6px;padding:14px;background:#fff}
+.tcell .n{font-family:var(--mono);font-size:26px;line-height:1.1}
+.tcell .l{font-size:12px;color:var(--muted);margin-top:2px}
+.spark{display:flex;align-items:flex-end;gap:8px;height:72px;margin:20px 0 8px}
+.spark .bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.spark .bar i{width:100%;background:#ded2bc;border-radius:3px;min-height:3px;align-self:flex-end}
+.spark .bar i.today{background:var(--accent)}
+.spark .bar span{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.day{margin-top:18px}
+.day h5{font-size:13px;color:var(--accent);font-family:var(--mono);margin-bottom:6px}
+.row{display:flex;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.row .t{font-family:var(--mono);font-size:11px;color:var(--muted);width:40px;flex:0 0 40px}
+.row .p{flex:1;word-break:break-all;font-size:12.5px}
+.tag{font-size:10.5px;padding:1px 6px;border-radius:4px;white-space:nowrap}
+.stack{border:1px solid var(--line);border-radius:6px;background:#fff;padding:12px 14px;margin-bottom:12px}
+.stack-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.stack-title{font-family:var(--mono);font-size:13px;word-break:break-all}
+.badge{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.badge.warn{color:var(--warn);border-color:#e6d3a5;background:#fdf8ea}
+.sf{display:flex;gap:8px;align-items:baseline;padding:6px 8px;border-radius:4px;font-size:12px;margin-top:4px}
+.sf.go{cursor:pointer}
+.sf.go:hover{background:#f7f1e2}
+.sf.go:hover .rel{text-decoration:underline}
+.sf.keep{background:#f1f7ef}
+.sf .role{width:34px;flex:0 0 34px;font-size:11px;color:var(--muted)}
+.sf .role.k{color:var(--ok);font-weight:600}
+.sf .rel{flex:1;word-break:break-all;font-family:var(--mono);font-size:11.5px}
+.sf .when{color:var(--muted);font-family:var(--mono);font-size:11px;white-space:nowrap}
+.stack-foot{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.stack-foot .note{font-size:12px;color:var(--muted);flex:1}
+.btn{height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font-size:12.5px;
+  border:1px solid var(--line);background:#fff}
+.btn:hover{border-color:#c5b79e}
+.btn.danger{background:#fdf0e9;border-color:#e4c3b2;color:#8f3a1c}
+.btn.ok{background:#f1f7ef;border-color:#cfe0c9;color:var(--ok)}
+.tier{border:1px solid var(--line);border-radius:6px;margin-bottom:10px;overflow:hidden;background:#fff}
+.tier-head{display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer}
+.tier-head .k{font-size:16px}
+.tier-head .name{font-size:14px}
+.tier-head .cnt{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.tier-body{display:none;padding:0 14px 14px}
+.tier.open .tier-body{display:block}
+.tier-body .f{font-size:12px;font-family:var(--mono);padding:3px 0;word-break:break-all}
+.tier-body .why{font-size:11.5px;color:var(--muted);margin-bottom:8px}
+.restorebar{display:flex;align-items:center;gap:10px;background:#f1f7ef;border:1px solid #cfe0c9;
+  border-radius:6px;padding:10px 12px;margin-bottom:16px;font-size:12px;flex-wrap:wrap}
+.restorebar code{font-family:var(--mono);font-size:11px;word-break:break-all}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,12px);opacity:0;
+  background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;
+  z-index:60;transition:.25s;pointer-events:none;max-width:80vw}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (max-width:820px){
+  header{padding:16px;min-height:72px;flex-wrap:wrap}
+  h1{font-size:26px}
+  main{padding:24px 16px 64px}
+  .rope-row{gap:20px;padding:40px 0 32px}
+  .polaroid,.skeleton{width:calc(50vw - 26px);flex:0 0 calc(50vw - 26px)}
+  .drawer{width:100vw}
+}
+@media (max-width:560px){
+  .polaroid,.skeleton{width:100%;flex:1 1 100%;max-width:320px}
+  .rope-row{flex-direction:column;align-items:center}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header>
+  <span class="mark" aria-hidden="true">🪢</span>
+  <div>
+    <h1>项目伴侣</h1>
+    <p id="subline">正在数项目…</p>
+  </div>
+  <div class="top-right">
+    <span class="date" id="stampDate"></span>
+    <button class="ghost" id="btnToday">只看今天有动静</button>
+    <button class="ghost" id="btnRefresh">↻ 重新扫描</button>
+  </div>
+</header>
+
+<main>
+  <div class="views">
+    <button class="tab on" data-view="rope">🪢 挂绳</button>
+    <button class="tab" data-view="changes">✎ 变化</button>
+    <span class="views-hint" id="viewsHint"></span>
+  </div>
+  <div class="board" id="board" aria-live="polite"></div>
+  <div class="changes" id="changes" hidden>
+    <div class="chg-bar">
+      <button class="tab on" data-win="today">今天</button>
+      <button class="tab" data-win="7d">近 7 天</button>
+    </div>
+    <div id="chgBody"></div>
+  </div>
+</main>
+
+<footer>
+  <span>只读扫描 · 数据不出本机</span>
+  <span>旧版本归档进 _versions，可一键还原</span>
+  <span id="footTime"></span>
+</footer>
+
+<div class="overlay" id="overlay" hidden></div>
+<aside class="drawer" id="drawer" aria-label="项目详情">
+  <div class="drawer-head">
+    <div class="dh-top">
+      <h2 id="dhName">项目</h2>
+      <button class="close" id="btnClose" aria-label="关闭">×</button>
+    </div>
+    <div class="dh-path" id="dhPath"></div>
+    <div class="dh-actions">
+      <button id="btnReveal">📂 在 Finder 打开</button>
+      <button id="btnRescanOne">↻ 重扫这个项目</button>
+    </div>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TOKEN='__PANEL_TOKEN__';
+const AGENTS={dsh:{label:'DSH',color:'#7c5cc4'},workbuddy:{label:'WorkBuddy',color:'#c26a1f'},
+  trae:{label:'Trae(git)',color:'#2b7fa3'},doubao:{label:'豆包',color:'#2f6b45'},
+  unknown:{label:'未知来源',color:'#7a7164'}};
+const $=s=>document.querySelector(s);
+const enc=s=>encodeURIComponent(s);
+let board=null, cur=null, onlyToday=false, perRow=4;
+
+/* ---------- 基础 ---------- */
+async function api(u, body){
+  const opt=body
+    ? {method:'POST',headers:{'Content-Type':'application/json','X-Panel-Token':TOKEN},body:JSON.stringify(body)}
+    : {headers:{'X-Panel-Token':TOKEN}};
+  const r=await fetch(u,opt);
+  let d={};
+  try{ d=await r.json(); }catch(e){}
+  if(!r.ok && !(d&&d.error)) d={error:'HTTP '+r.status};
+  if(d && d.error){ toast('出错了：'+d.error); }
+  return d;
+}
+let toastTimer=null;
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function pad(n){return String(n).padStart(2,'0')}
+function dkey(d){return pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function fmtWhen(ts){const d=new Date(ts*1000);return pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())}
+function initials(name){return [...name].slice(0,2).join('')}
+function hue(name){let h=0;for(const c of name)h=(h*31+c.charCodeAt(0))%360;return h}
+
+/* ---------- 看板 ---------- */
+function calcPerRow(){const w=innerWidth;return w>=1360?5:w>=1080?4:w>=800?3:w>=540?2:1}
+function ropeSVG(){
+  return `<svg class="rope-svg" viewBox="0 0 1000 54" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M-20 12 C 260 34, 740 34, 1020 12" fill="none" stroke="#8f7448" stroke-width="3.2" opacity=".95"/>
+    <path d="M-20 15 C 260 37, 740 37, 1020 15" fill="none" stroke="#5f4a2c" stroke-width="1" opacity=".35"/>
+  </svg>`;
+}
+function sparkMini(series){
+  const max=Math.max(1,...series.map(s=>s.n));
+  return `<span class="mini" title="近 7 天改动">`+
+    series.map((s,i)=>`<i class="${i===series.length-1&&s.n?'today':''}" style="height:${Math.max(2,Math.round(s.n/max*16))}px"></i>`).join('')+
+    `</span>`;
+}
+function cardHTML(p,i){
+  const active=p.today.total>0;
+  const dot=active?'ok':(p.days_since<=3?'warn':'');
+  const tilt=(((i*17)%9)-4)/2.4;
+  const thumb=p.thumb
+    ? `<img loading="lazy" alt="" src="/api/thumb?root=${enc(p.root)}&rel=${enc(p.thumb.rel)}&k=${TOKEN}&v=${Math.round(p.thumb.mtime)}">`
+    : `<div class="art" style="--h:${hue(p.name)}">${esc(initials(p.name))}<small>${p.files} 个文件</small></div>`;
+  const chips=[];
+  if(active){
+    const t=p.today;
+    let label=t.created?`今天 新建 ${t.created}`:`今天 改动 ${t.modified}`;
+    if(t.created&&t.modified>t.created) label+=` · 改动 ${t.modified}`;
+    chips.push(`<span class="chip hot">${label}</span>`);
+  }else{
+    chips.push(`<span class="chip">${p.days_since>=999?'还没动过':p.days_since+' 天没动'}</span>`);
+  }
+  if(p.chains) chips.push(`<span class="chip">版本堆叠 ${p.chains}</span>`);
+  if(p.big) chips.push(`<span class="chip">${(p.files/10000).toFixed(1)} 万文件</span>`);
+  else if(p.dup_files) chips.push(`<span class="chip">同名副本 ${p.dup_files}</span>`);
+  const stamp=(!active&&p.days_since>=7)?`<span class="stamp">搁置 ${p.days_since} 天</span>`:'';
+  return `<article class="polaroid" style="--tilt:${tilt}deg" tabindex="0" role="button"
+      aria-label="${esc(p.name)}，${active?'今天有改动':'最近 '+p.days_since+' 天没动'}"
+      data-root="${esc(p.root)}">
+    <div class="peg" aria-hidden="true"></div>
+    <div class="tape" aria-hidden="true"></div>
+    <div class="photo">${thumb}${stamp}</div>
+    <div class="caption">
+      <h3 title="${esc(p.name)}">${esc(p.name)}</h3>
+      <div class="meta"><span class="dot ${dot}"></span>
+        <span>${active?'今天有新动静':'最近 '+p.days_since+' 天'}</span>
+        ${sparkMini(p.series)}
+      </div>
+      <div class="chips">${chips.join('')}</div>
+    </div>
+  </article>`;
+}
+function renderBoard(){
+  const el=$('#board');
+  if(!board||!board.projects){el.innerHTML='';return}
+  let list=board.projects;
+  if(onlyToday) list=list.filter(p=>p.today.total>0);
+  if(!list.length){
+    el.innerHTML=`<div class="empty"><h2>${onlyToday?'今天还没有项目动过':'绳子上还空着'}</h2>
+      <p>把项目路径写进 <code>panel_config.json</code>，或重启面板让它自动发现。</p></div>`;
+    return;
+  }
+  perRow=calcPerRow();
+  const rows=[];
+  for(let i=0;i<list.length;i+=perRow) rows.push(list.slice(i,i+perRow));
+  el.innerHTML=rows.map((row,ri)=>`<div class="rope-row">${ropeSVG()}${
+    row.map((p,i)=>cardHTML(p,ri*perRow+i)).join('')}</div>`).join('');
+  el.querySelectorAll('.polaroid').forEach(c=>{
+    c.addEventListener('click',()=>openProject(c.dataset.root));
+    c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openProject(c.dataset.root)}});
+  });
+}
+async function loadBoard(){
+  $('#board').innerHTML=`<div class="rope-row">${ropeSVG()}<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>`;
+  board=await api('/api/board');
+  if(!board||board.error) return;
+  $('#subline').textContent=`${board.projects.length} 个项目挂在这里${board.active_today?`，${board.active_today} 个今天有动静`:'，今天都还安静'}`;
+  $('#stampDate').textContent=board.today_label;
+  $('#footTime').textContent='扫描于 '+board.generated_at;
+  renderBoard();
+  renderChanges();
+  updateHint();
+}
+
+/* ---------- 变化清单（只列动过的文件，不铺全量） ---------- */
+let view='rope', chgWindow='today';
+
+function changedOf(p){
+  return (p.changed||[]).filter(c=>chgWindow==='today'?c.today:true);
+}
+function updateHint(){
+  if(!board) return;
+  let week=0, today=0;
+  for(const p of board.projects){
+    week+=p.changed_week_total||0;
+    today+=p.changed_today_total||0;
+  }
+  $('#viewsHint').textContent=`今天 ${today} 个文件动过 · 近 7 天 ${week} 个`;
+}
+function renderChanges(){
+  const el=$('#chgBody');
+  if(!board){el.innerHTML='';return}
+  if(view!=='changes') return;
+  const parts=[];
+  let total=0;
+  for(const p of board.projects){
+    const items=changedOf(p);
+    if(!items.length) continue;
+    total+=items.length;
+    const todayN=(p.changed||[]).filter(c=>c.today).length;
+    parts.push(`<section class="chg-proj">
+      <div class="chg-head">
+        <h3>${esc(p.name)}</h3>
+        <span class="stat">今天 ${p.changed_today_total||0} · 近 7 天 ${p.changed_week_total||0}${(p.changed_week_total||0)>items.length?` · 这里只列最近 ${items.length} 个`:''}</span>
+        <button class="btn more" data-open="${esc(p.root)}">打开详情</button>
+      </div>
+      ${items.map(c=>`<div class="chg-row">
+        <span class="t">${c.today?c.time:c.date.slice(5)+' '+c.time}</span>
+        <span class="p" data-reveal="${esc(p.root)}|${esc(c.rel)}" title="${esc(c.rel)}">${esc(c.rel)}</span>
+        <span class="tags">
+          <span class="${c.kind==='create'?'knew':'kmod'}">${c.kind==='create'?'✚ 新建':'✎ 改动'}</span>
+          <span class="ver ${c.stack?'':'zero'}">旧版本 ×${c.stack}</span>
+        </span>
+        ${c.stack?`<button class="btn danger" data-proj="${esc(p.root)}">去整理</button>`:'<span></span>'}
+      </div>`).join('')}
+    </section>`);
+  }
+  el.innerHTML=parts.length?parts.join(''):
+    `<div class="chg-empty">${chgWindow==='today'?'今天还没有文件变动。':'近 7 天没有文件变动。'}</div>`;
+  el.querySelectorAll('[data-reveal]').forEach(x=>{
+    x.onclick=()=>{
+      const [root,rel]=x.dataset.reveal.split('|');
+      api('/api/reveal',{root,rel});
+    };
+  });
+  el.querySelectorAll('[data-proj]').forEach(b=>{
+    b.onclick=()=>{ if(b.classList.contains('danger')) openProject(b.dataset.proj); };
+  });
+  el.querySelectorAll('[data-open]').forEach(b=>{
+    b.onclick=()=>openProject(b.dataset.open);
+  });
+}
+function setView(v){
+  view=v;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.view===v));
+  $('#board').hidden=v!=='rope';
+  $('#changes').hidden=v!=='changes';
+  $('#btnToday').style.display=v==='changes'?'none':'';
+  if(v==='changes') renderChanges();
+  updateHint();
+}
+
+/* ---------- 抽屉 ---------- */
+function openDrawer(){
+  $('#overlay').hidden=false;
+  requestAnimationFrame(()=>{
+    $('#overlay').classList.add('show');
+    $('#drawer').classList.add('show');
+  });
+  document.body.style.overflow='hidden';
+}
+function closeDrawer(){
+  $('#overlay').classList.remove('show');
+  $('#drawer').classList.remove('show');
+  setTimeout(()=>{$('#overlay').hidden=true},280);
+  document.body.style.overflow='';
+  if(location.hash) history.replaceState(null,'',location.pathname);
+}
+async function openProject(root){
+  openDrawer();
+  history.replaceState(null,'','#p='+encodeURIComponent(root));
+  $('#dhName').textContent=root.split('/').filter(Boolean).pop();
+  $('#dhPath').textContent=root;
+  $('#drawerBody').innerHTML='<div class="loading" id="dLoading">正在数文件…</div>';
+  const t0=Date.now();
+  const tick=setInterval(()=>{
+    const el=$('#dLoading');
+    if(!el){clearInterval(tick);return}
+    const s=Math.round((Date.now()-t0)/100)/10;
+    el.textContent=`正在数文件… ${s}s`;
+  },300);
+  let d=null;
+  try{ d=await api('/api/project?root='+enc(root)); }
+  catch(e){ d={error:'连不上面板服务'} }
+  clearInterval(tick);
+  if(!d||d.error){
+    const msg=(d&&d.error)||'未知错误';
+    $('#drawerBody').innerHTML=`<div class="loading">没读到数据：${esc(msg)}<br><br>
+      <button class="btn" id="btnReload">刷新页面重试</button>
+      <button class="btn" id="btnRetry">再试一次</button></div>`;
+    $('#btnReload').onclick=()=>location.reload();
+    $('#btnRetry').onclick=()=>openProject(root);
+    return;
+  }
+  cur=d;
+  renderDrawer();
+}
+function agentTag(a){
+  const g=AGENTS[a&&a.agent?a.agent:'unknown']||AGENTS.unknown;
+  const s=a&&a.conf==='推测'?' ·推测':'';
+  return `<span class="tag" style="background:${g.color}18;color:${g.color}">${g.label}${s}</span>`;
+}
+function seriesFromFiles(files){
+  const now=new Date(), out=[], map={};
+  for(const f of files){
+    const k=dkey(new Date(f.mtime*1000));
+    map[k]=(map[k]||0)+1;
+  }
+  for(let i=6;i>=0;i--){
+    const d=new Date(now); d.setDate(d.getDate()-i);
+    out.push({d:dkey(d),n:map[dkey(d)]||0});
+  }
+  return out;
+}
+function stackHTML(c){
+  const iso=(c.isolatable||[]).length;
+  const badge=c.kind==='identical'
+    ? `<span class="badge">完全一致 ×${c.files.length}</span>`
+    : `<span class="badge warn">同名不同内容 ×${c.files.length}</span>`;
+  const rows=c.files.map(f=>`<div class="sf go ${f.keep?'keep':''}" data-rel="${esc(f.rel)}" title="在 Finder 里定位这份">
+    <span class="role ${f.keep?'k':''}">${f.keep?'最新':(f.referenced?'在引用':'副本')}</span>
+    <span class="rel">${esc(f.rel)}</span>
+    <span class="when">${fmtWhen(f.mtime)}</span></div>`).join('');
+  return `<div class="stack">
+    <div class="stack-head"><span class="stack-title">${esc(c.title)}</span>${badge}</div>
+    ${rows}
+    <div class="stack-foot">
+      <span class="note">${c.dirs.length>1?'分布在 '+c.dirs.length+' 个目录':'同目录'} · 最新是 <b>${esc(c.keep)}</b></span>
+      ${iso?`<button class="btn danger" data-iso='${esc(JSON.stringify(c.isolatable))}'>🗂 归档 ${iso} 份旧副本</button>`:''}
+    </div></div>`;
+}
+function bindStackClicks(scope){
+  (scope||$('#drawerBody')).querySelectorAll('.sf.go[data-rel]').forEach(el=>{
+    el.onclick=e=>{
+      if(e.target.closest('button')) return;
+      if(cur) api('/api/reveal',{root:cur.root,rel:el.dataset.rel});
+    };
+  });
+}
+function renderDrawer(){
+  const d=cur, files=d.files||[], total=d.files_total||files.length, tl=d.timeline||[], cl=d.clusters||[], tiers=d.tiers||{1:[],2:[],3:[]};
+  const nowKey=dkey(new Date());
+  const today=tl.find(x=>x.day===nowKey)||{created:[],modified:[],live:[]};
+  const del=(today.live||[]).filter(e=>e.kind==='delete').length;
+  const series=d.series7||seriesFromFiles(files);
+  const maxN=Math.max(1,...series.map(s=>s.n));
+  const days=tl.filter(x=>(x.created&&x.created.length)||(x.modified&&x.modified.length)||((x.live||[]).length));
+
+  let html='';
+  if(d.light) html+=`<div class="restorebar" style="background:#fdf8ea;border-color:#e6d3a5">
+    ⚠️ 这个项目有 <b>${total}</b> 个文件，只做了轻量统计（没逐个读内容）。
+    想看版本堆叠，把它的子目录单独加进配置再扫一次。</div>`;
+  const lastMf=localStorage.getItem('pm_last_manifest');
+  if(lastMf) html+=`<div class="restorebar">↩️ 最近一次清理：<code>${esc(lastMf)}</code>
+    <button class="btn ok" onclick="doRestore(true)">还原演练</button>
+    <button class="btn ok" onclick="doRestore(false)">全部还原</button></div>`;
+
+  html+=`<h4 class="sec">今天 <small>${nowKey}</small></h4>
+    <div class="today-grid">
+      <div class="tcell"><div class="n">${(today.created||[]).length}</div><div class="l">新建</div></div>
+      <div class="tcell"><div class="n">${(today.modified||[]).length}</div><div class="l">改动</div></div>
+      <div class="tcell"><div class="n">${del}</div><div class="l">删除/移动</div></div>
+    </div>
+    <div class="spark">${series.map((s,i)=>`<div class="bar" title="${s.d}：${s.n} 个文件">
+      <i class="${i===series.length-1?'today':''}" style="height:${Math.round(s.n/maxN*56)+3}px"></i>
+      <span>${s.d.slice(3)}</span></div>`).join('')}</div>
+    <div class="row" style="border:none;color:var(--muted);font-size:12px">
+      <span>近 7 天共 ${series.reduce((a,b)=>a+b.n,0)} 次改动</span>
+      <span style="margin-left:auto">共 ${total} 个文件</span>
+    </div>`;
+
+  if(!d.light){
+  html+=`<h4 class="sec" style="margin-top:32px">版本堆叠 <small>同名同内容 · 哪份最新</small></h4>`;
+  if(!cl.length){
+    html+=`<div class="row" style="border:none;color:var(--muted)">没有堆叠，一个文件一个版本，很干净。</div>`;
+  }else{
+    window.__stacks=cl;
+    html+=`<div id="stackList">${cl.slice(0,8).map(stackHTML).join('')}</div>`;
+    if(cl.length>8) html+=`<button class="btn" id="btnMoreStacks" style="margin-top:12px">还有 ${cl.length-8} 组堆叠，展开</button>`;
+  }
+  }
+
+  html+=`<h4 class="sec" style="margin-top:32px">逐日改动 <small>点开某天看明细</small></h4>`;
+  html+= days.length? days.slice(0,12).map((day,idx)=>{
+    const rows=[];
+    for(const e of (day.live||[])){
+      const k=e.kind==='create'?['✚ 新建','#2f6b45']:e.kind==='modify'?['✎ 改动','#9a6b12']:e.kind==='delete'?['📛 删除','#8a3330']:['🔀 移动','#2b7fa3'];
+      rows.push(`<div class="row"><span class="t">${e.time}</span><span class="p" style="color:${k[1]}">${k[0]}</span><span class="p" style="flex:2">${esc(e.path)}</span>${agentTag(e)}</div>`);
+    }
+    for(const e of (day.created||[])) rows.push(`<div class="row"><span class="t">${e.time}</span><span class="p" style="color:#2f6b45">✚ 新建</span><span class="p" style="flex:2">${esc(e.path)}</span>${agentTag(e)}</div>`);
+    for(const e of (day.modified||[]).slice(0,40)) rows.push(`<div class="row"><span class="t">${e.time}</span><span class="p" style="color:#9a6b12">✎ 改动</span><span class="p" style="flex:2">${esc(e.path)}</span>${agentTag(e)}</div>`);
+    if(!rows.length) return '';
+    return `<div class="day" ${idx>=3?'data-more="1" style="display:none"':''}><h5>${day.day}</h5>${rows.join('')}</div>`;
+  }).join('') : '<div class="row" style="border:none;color:var(--muted)">还没有记录到改动。</div>';
+  html+=days.length>3?`<button class="btn" id="btnMoreDays" style="margin-top:12px">展开更早的 ${days.length-3} 天</button>`:'';
+
+  if(!d.light){
+  const tierBox=(k,title,color,auto)=>{
+    const items=tiers[k]||[];
+    if(!items.length) return '';
+    const body=items.map(it=>`<div class="why">↳ ${esc(it.reason)}</div>${(it.files||[]).map(f=>`<div class="f">${esc(f)}</div>`).join('')}`).join('');
+    return `<div class="tier"><div class="tier-head" onclick="this.parentNode.classList.toggle('open')">
+        <span class="k">${k==='1'?'🟢':k==='2'?'🟡':'🔴'}</span>
+        <span class="name" style="color:${color}">${title}</span>
+        <span class="cnt">${items.length} 项 ▾</span></div>
+      <div class="tier-body">${body}${auto?`<button class="btn danger" style="margin-top:10px" onclick="doTrash(1,[])">🧊 第一档全部收进隔离区</button>`:''}</div></div>`;
+  };
+  html+=`<h4 class="sec" style="margin-top:32px">清理建议 <small>只动可证明安全的</small></h4>`;
+  html+=tierBox('1','可证明安全','#2f6b45',true)+tierBox('2','建议清理','#9a6b12',false)+tierBox('3','需人工确认','#8a3330',false);
+  }
+
+  $('#drawerBody').innerHTML=html;
+  $('#drawerBody').querySelectorAll('[data-iso]').forEach(b=>{
+    b.onclick=()=>doIsolate(JSON.parse(b.dataset.iso));
+  });
+  bindStackClicks();
+  const bms=$('#btnMoreStacks');
+  if(bms) bms.onclick=()=>{
+    const box=$('#stackList');
+    box.innerHTML=(window.__stacks||[]).map(stackHTML).join('');
+    bindStackClicks(box); bms.remove();
+  };
+  const bm=$('#btnMoreDays');
+  if(bm) bm.onclick=()=>{document.querySelectorAll('.day[data-more]').forEach(x=>x.style.display='');bm.remove()};
+}
+
+/* ---------- 动作 ---------- */
+async function doTrash(tier, files){
+  if(!cur) return;
+  if(tier===1){
+    const n=(cur.tiers[1]||[]).reduce((a,i)=>a+(i.files||[]).length,0);
+    if(!confirm(`把第一档 ${n} 个文件收进隔离区？随时可还原。`)) return;
+    files=[];  // 服务端按档位含义不处理空集合，这里显式展开
+    (cur.tiers[1]||[]).forEach(it=>(it.files||[]).forEach(f=>files.push(f)));
+  }else{
+    if(!files.length){ toast('先勾选要清理的文件'); return; }
+    if(!confirm(`把选中的 ${files.length} 个文件收进隔离区？`)) return;
+  }
+  const r=await api('/api/trash',{root:cur.root,files,reason:'面板第'+tier+'档',tier});
+  if(r.moved===undefined) return;
+  if(r.manifest) localStorage.setItem('pm_last_manifest',r.manifest);
+  toast(`已收进隔离区 ${r.moved} 个${r.skipped&&r.skipped.length?`，跳过 ${r.skipped.length} 个`:''}`);
+  await api('/api/rescan');
+  openProject(cur.root); loadBoard();
+}
+async function doIsolate(files){
+  if(!cur||!files.length) return;
+  if(!confirm(`把 ${files.length} 份旧副本挪进 _versions/？最新那份留在原位，随时可还原。`)) return;
+  const r=await api('/api/archive',{root:cur.root,files});
+  if(!r.ok){ toast(r.error||'归档失败'); return; }
+  if(r.manifest) localStorage.setItem('pm_last_manifest',r.manifest);
+  toast(`归档 ${r.moved} 份旧副本 → _versions/`);
+  await api('/api/rescan');
+  openProject(cur.root); loadBoard();
+}
+async function doRestore(dry){
+  const mf=localStorage.getItem('pm_last_manifest');
+  if(!mf){toast('还没有可还原的清单');return}
+  if(!dry && !confirm('把最近一次清理的文件全部还原回原位？（不覆盖已有文件）')) return;
+  const r=await api('/api/restore',{manifest:mf,dry_run:!!dry});
+  if(r.ok===undefined) return;
+  toast(`${dry?'演练':'还原'}：成功 ${r.ok}，跳过 ${r.skip}，失败 ${r.fail}，哈希告警 ${r.warn}`);
+  await api('/api/rescan');
+  if(cur) openProject(cur.root);
+  loadBoard();
+}
+
+/* ---------- 事件 ---------- */
+$('#btnClose').onclick=closeDrawer;
+$('#overlay').onclick=closeDrawer;
+document.addEventListener('keydown',e=>{if(e.key==='Escape') closeDrawer()});
+$('#btnRefresh').onclick=async()=>{await api('/api/rescan'); await loadBoard(); toast('已重新扫描')};
+document.querySelectorAll('.tab[data-view]').forEach(t=>t.onclick=()=>setView(t.dataset.view));
+document.querySelectorAll('.tab[data-win]').forEach(t=>t.onclick=()=>{
+  chgWindow=t.dataset.win;
+  document.querySelectorAll('.tab[data-win]').forEach(x=>x.classList.toggle('on',x===t));
+  renderChanges();
+});
+$('#btnToday').onclick=e=>{onlyToday=!onlyToday;e.currentTarget.classList.toggle('on',onlyToday);renderBoard()};
+$('#btnReveal').onclick=()=>{if(cur) api('/api/reveal',{root:cur.root})};
+$('#btnRescanOne').onclick=async()=>{if(cur){await api('/api/rescan');openProject(cur.root)}};
+let rz=null;
+addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if(board&&board.projects&&calcPerRow()!==perRow)renderBoard()},200)});
+loadBoard().then(()=>{
+  const m=location.hash.match(/#p=(.*)/);
+  if(m){try{openProject(decodeURIComponent(m[1]))}catch(e){}}
+  else if(location.hash==='#changes') setView('changes');
+});
+</script>
+</body>
+</html>

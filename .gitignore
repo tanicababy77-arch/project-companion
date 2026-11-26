@@ -1,0 +1,34 @@
+# ---- 运行产物 / 本机数据（不进版本库）----
+.pm_cache/
+.panel_token
+manifests/
+quarantine/
+tier_out/
+demo_output/
+*_map/
+cleanup_manifest.json
+panel_config.json
+
+# ---- 各项目里由 agent 写下的名片数据 ----
+.pm_cards/
+
+# ---- Python ----
+__pycache__/
+*.pyc
+
+# ---- agent 运行时记忆 ----
+.workbuddy/
+
+# ---- 编译产物 ----
+project_companion_bar
+
+# ---- macOS / 临时 / 打包残留 ----
+.DS_Store
+.screenshots/
+events/
+demo_project/
+tier_test/
+clothesline-panel-win.zip
+
+# 开发笔记（临时、含旧名，不入仓库）
+改动说明_*.md
